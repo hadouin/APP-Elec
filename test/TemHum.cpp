@@ -17,12 +17,10 @@ void dec2bin(int n)
         if (k & 1) 
         {
             Serial.print("1");
-            Serial1.print("1");
         }
         else 
         { 
             Serial.print("0");
-            Serial1.print("0");
         }
     }
 }
@@ -159,8 +157,6 @@ void read_dht11(uint8_t dht11_pin)
   Serial.println("");
   Serial.println("");
 }
-
-
 
 void loop()
 {
