@@ -1,3 +1,5 @@
+#define DHT11_PIN PA_5
+
 void setup()
 {
 Serial.begin(9600);
@@ -165,8 +167,8 @@ void loop()
 for(unsigned int x = 0; x < 5; x++)
 {
 wait_for_dht11();
-start_signal(PA_5);
-read_dht11(PA_5);
+start_signal(DHT11_PIN);
+read_dht11(DHT11_PIN);
 }
 Serial.end(); 
 }
