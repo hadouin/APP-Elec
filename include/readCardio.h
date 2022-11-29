@@ -11,6 +11,7 @@ int getCardio() {
   int i = 0;
   int log[9];
   int somme = 0;
+  int startTime = millis();
   do {
     int readValue = analogRead(CARDIO_PIN);
     int detectTime = millis();
@@ -24,6 +25,9 @@ int getCardio() {
       lastTime = detectTime;
     }
     valeurPrecedente = readValue;
+    if (startTime - millis() > 30000) {
+      return 0;
+    }
   } while (i<11);
 
   return somme / 10;

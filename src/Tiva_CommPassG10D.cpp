@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <stdio.h>
 
-#include "readTemperature.h"
 #include "readCardio.h"
 #include "readCO2.h"
+#include "readTemperature.h"
 
 //------------------------------------------------------------------------
 // Comm_passerelle
@@ -54,7 +54,7 @@ void setup()
 	//TrameEnvoi[18] = '0';		// 19e et dernier octet de la trame
 }
 
-void   Send_Trame(char typeCapt, int valeurCapt);
+void   Send_Trame(char typeCapt, uint16_t valeurCapt);
 void   Recep_Trame(void);
 void   Analyse_Trame(void);
 char   Conv_hexToAsc(int digit);
@@ -70,7 +70,8 @@ void loop()
 //------------------------------------------------------------------------
 {
 //---Temperature---
-	int valeur_Temp;
+	uint16_t valeur_Temp;
+	Serial.print("reading Hum ");
 	valeur_Temp = getTemperature();
 	Send_Trame(CAPT_TEMP, valeur_Temp);
 		// Lire la trame de réponse
@@ -80,14 +81,17 @@ void loop()
 	//Analyse_Trame();
 delay(2000);
 //---Humidité---
-	int valeur_Hum;
+	uint16_t valeur_Hum;
+	Serial.print("reading Hum");
 	valeur_Hum = getHumidite();
+	Serial.println(valeur_Hum);
 	Send_Trame(CAPT_HUM, valeur_Hum);
 	//Recep_Trame();
 	//Analyse_Trame();
 delay(2000);
 //---Cardiaque---
-	int valeur_cardio;
+	int valeur_cardio = 90;
+	Serial.println("reading Cardio");
 	valeur_cardio = getCardio();
 	Send_Trame(CAPT_CARDIO, valeur_cardio);
 	//Recep_Trame();
@@ -95,10 +99,12 @@ delay(2000);
 delay(2000);
 //---C02---
 	int valeur_C02;
+	Serial.println("reading CO2");
 	valeur_C02 = getCO2();
 delay(2000);
 //---tVOC---
 	int valeur_tVOC;
+	Serial.println("reading tVOC");
 	valeur_tVOC = gettVOC();
 	// TODO: analyse when button pressed on PA7 or PC7 // Temporisation de 2 à 10 secondes
 delay(2000);

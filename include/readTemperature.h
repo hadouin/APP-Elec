@@ -26,6 +26,45 @@ int concat(int a, int b)
     return c;
 }
 
+void dec2bin(int n)
+{
+    int c, k;
+
+   for (c = 15; c >= 0; c--)
+    {
+        k = n >> c;
+
+        if (k & 1) 
+        {
+            Serial.print("1");
+            Serial1.print("1");
+        }
+        else 
+        { 
+            Serial.print("0");
+            Serial1.print("0");
+        }
+    }
+}
+
+void dec2bin8(int n)
+{
+    int c, k;
+
+   for (c = 7; c >= 0; c--)
+    {
+        k = n >> c;
+
+        if (k & 1) {
+
+            Serial.print("1");
+        }
+        else {
+             Serial.print("0");
+        }
+    }
+}
+
 uint16_t rawHumidity = 0;
 uint16_t rawTemperature = 0;
 uint8_t checkSum = 0;
@@ -88,14 +127,52 @@ void read_dht11(uint8_t dht11_pin)
     }
   }
 
+  // humi = rawHumidity >> 8;
+  // rawHumidity <<= 8;
+  // humd = rawHumidity >> 8;
+
+  // tempi = rawTemperature >> 8;
+  // rawTemperature <<= 8;
+  // tempd = rawTemperature >> 8;
+
+  Serial.println("Humidity: ");
+  dec2bin(rawHumidity);
+  Serial.print("\t");
   humi = rawHumidity >> 8;
-  rawHumidity <<= 8;
+  dec2bin8(humi);
+  Serial.print("\t");
+  rawHumidity = rawHumidity << 8;
   humd = rawHumidity >> 8;
+  dec2bin8(humd);
+  Serial.print("\t");
+  Serial.print(humi);
+  Serial.print(".");
+  Serial.print(humd);
+  Serial.print("%");
+  Serial.println("");
 
+  Serial.println("Temperature Degree Celcius: ");
+  dec2bin(rawTemperature);
+  Serial.print("\t");
   tempi = rawTemperature >> 8;
-  rawTemperature <<= 8;
+  dec2bin8(tempi);
+  Serial.print("\t");
+  rawTemperature = rawTemperature << 8;
   tempd = rawTemperature >> 8;
+  //tempd = (byte)rawTemperature;
+  dec2bin8(tempd);
+  Serial.print("\t");
+  Serial.print(tempi);
+  Serial.print(".");
+  Serial.print(tempd);
+  Serial.print("C");
+  Serial.println("");
 
+  Serial.println("Checksum Byte: ");
+  dec2bin8(checkSum);
+  Serial.println("");
+  dec2bin8(tempi + tempd + humi + humd);
+  Serial.println("");
   if ((byte)checkSum == (byte)(tempi + tempd + humi + humd))
   {
     Serial.print("CHECKSUM_OK");
@@ -104,6 +181,9 @@ void read_dht11(uint8_t dht11_pin)
   {
     Serial.print("CHECKSUM_ERROR");
   }
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
 
 }
 
