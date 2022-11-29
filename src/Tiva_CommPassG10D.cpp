@@ -1,9 +1,183 @@
 #include <Arduino.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "readCardio.h"
 #include "readCO2.h"
-#include "readTemperature.h"
+
+int concat(int a, int b)
+{
+ 
+    char s1[20];
+    char s2[20];
+ 
+    // Convert both the integers to string
+    sprintf(s1, "%d", a);
+    sprintf(s2, "%d", b);
+ 
+    // Concatenate both strings
+    strcat(s1, s2);
+ 
+    // Convert the concatenated string
+    // to integer
+    int c = atoi(s1);
+ 
+    // return the formed integer
+    return c;
+}
+
+void dec2bin(int n)
+{
+    int c, k;
+
+   for (c = 15; c >= 0; c--)
+    {
+        k = n >> c;
+
+        if (k & 1) 
+        {
+            Serial.print("1");
+        }
+        else 
+        { 
+            Serial.print("0");
+        }
+    }
+}
+
+void dec2bin8(int n)
+{
+    int c, k;
+
+   for (c = 7; c >= 0; c--)
+    {
+        k = n >> c;
+
+        if (k & 1) {
+
+            Serial.print("1");
+        }
+        else {
+             Serial.print("0");
+        }
+    }
+}
+
+void wait_for_dht11()
+{
+delay(2000);
+}
+
+void start_signal(uint8_t dht11_pin)
+{
+pinMode(dht11_pin, OUTPUT);
+digitalWrite(dht11_pin, LOW); 
+delay(18);
+digitalWrite(dht11_pin, HIGH);
+pinMode(dht11_pin, INPUT);
+digitalWrite(dht11_pin, HIGH); 
+}
+
+  uint8_t humi;
+  uint8_t humd;
+  uint8_t tempi;
+  uint8_t tempd; 
+
+void read_dht11(uint8_t dht11_pin)
+{
+  uint16_t rawHumidity = 0;
+  uint16_t rawTemperature = 0;
+  uint8_t checkSum = 0;
+  uint16_t data = 0;
+
+  unsigned long startTime;
+  
+  for ( int8_t i = -3 ; i < 80; i++ ) 
+  { 
+    byte live;
+    startTime = micros();
+
+    do {
+      live = (unsigned long)(micros() - startTime);
+      if ( live > 90 ) {
+        Serial.println("ERROR_TIMEOUT");
+        return;
+      }
+    } while ( digitalRead(dht11_pin) == (i & 1) ? HIGH : LOW );
+
+    if ( i >= 0 && (i & 1) ) {
+      data <<= 1;
+
+      // TON of bit 0 is maximum 30 usecs and of bit 1 is at least 68 usecs.
+      if ( live > 30 ) {
+        data |= 1; // we got a one
+      }
+    }
+
+    switch ( i ) {
+      case 31:
+        rawHumidity = data;
+        break;
+      case 63:
+        rawTemperature = data;
+      case 79: 
+        checkSum = data;
+        data = 0;
+        break;
+    }
+  }
+
+  Serial.println("Humidity: ");
+  dec2bin(rawHumidity);
+  Serial.print("\t");
+  humi = rawHumidity >> 8;
+  dec2bin8(humi);
+  Serial.print("\t");
+  rawHumidity = rawHumidity << 8;
+  humd = rawHumidity >> 8;
+  dec2bin8(humd);
+  Serial.print("\t");
+  Serial.print(humi);
+  Serial.print(".");
+  Serial.print(humd);
+  Serial.print("%");
+  Serial.println("");
+
+  Serial.println("Temperature Degree Celcius: ");
+  dec2bin(rawTemperature);
+  Serial.print("\t");
+  tempi = rawTemperature >> 8;
+  dec2bin8(tempi);
+  Serial.print("\t");
+  rawTemperature = rawTemperature << 8;
+  tempd = rawTemperature >> 8;
+  //tempd = (byte)rawTemperature;
+  dec2bin8(tempd);
+  Serial.print("\t");
+  Serial.print(tempi);
+  Serial.print(".");
+  Serial.print(tempd);
+  Serial.print("C");
+  Serial.println("");
+
+  Serial.println("Checksum Byte: ");
+  dec2bin8(checkSum);
+  Serial.println("");
+  dec2bin8(tempi + tempd + humi + humd);
+  Serial.println("");
+  if ((byte)checkSum == (byte)(tempi + tempd + humi + humd))
+  {
+    Serial.print("CHECKSUM_OK");
+  } 
+  else 
+  {
+    Serial.print("CHECKSUM_ERROR");
+  }
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
+}
+
 
 //------------------------------------------------------------------------
 // Comm_passerelle
@@ -69,45 +243,15 @@ void loop()
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 {
-//---Temperature---
-	uint16_t valeur_Temp;
-	Serial.print("reading Hum ");
-	valeur_Temp = getTemperature();
-	Send_Trame(CAPT_TEMP, valeur_Temp);
-		// Lire la trame de réponse
-	//Recep_Trame();
-		// analyser la trame reçue	
-		// afficher la trame reçue sur le terminal de Energia
-	//Analyse_Trame();
-delay(2000);
-//---Humidité---
-	uint16_t valeur_Hum;
-	Serial.print("reading Hum");
-	valeur_Hum = getHumidite();
-	Serial.println(valeur_Hum);
-	Send_Trame(CAPT_HUM, valeur_Hum);
-	//Recep_Trame();
-	//Analyse_Trame();
-delay(2000);
-//---Cardiaque---
-	int valeur_cardio = 90;
-	Serial.println("reading Cardio");
-	valeur_cardio = getCardio();
-	Send_Trame(CAPT_CARDIO, valeur_cardio);
-	//Recep_Trame();
-	//Analyse_Trame();
-delay(2000);
-//---C02---
-	int valeur_C02;
-	Serial.println("reading CO2");
-	valeur_C02 = getCO2();
-delay(2000);
-//---tVOC---
-	int valeur_tVOC;
-	Serial.println("reading tVOC");
-	valeur_tVOC = gettVOC();
-	// TODO: analyse when button pressed on PA7 or PC7 // Temporisation de 2 à 10 secondes
-delay(2000);
+  wait_for_dht11();
+  start_signal(PA_5);
+  read_dht11(PA_5);
+  int U = tempi % 10;
+  int D = tempi / 10;
+  int DU = (D << 4) | U;
+  uint16_t valeur_Temp = (DU << 4) | tempd;
+  Send_Trame(CAPT_TEMP, valeur_Temp); 
+
 }
 
 void  Recep_Trame(void)
