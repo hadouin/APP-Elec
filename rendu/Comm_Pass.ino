@@ -1,7 +1,3 @@
-#include <Arduino.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 void dec2bin(int n)
 {
     int c, k;
@@ -214,61 +210,19 @@ char   Conv_hexToAsc(int digit);
 #define		CAPT_SONMIC		0x37	/* type de capteur de son/microphone	*/
 #define		CAPT_CARDIO		0x39	/* type de capteur de freq cardiaque	*/
 
-// define ports 
-#define PORT_CARDIO PD_0
-#define PORT_TEMP PA_5
-
-// valeur pour cardio
-int valeurPrecedente = 0;
-int lastTime = 0;
-int valeurSeuil = 150;
-
 void loop() 
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 {
-  // Captation temperature
   wait_for_dht11();
-  start_signal(PORT_TEMP);
-  read_dht11(PORT_TEMP);
+  start_signal(PA_5);
+  read_dht11(PA_5);
   int U = tempi % 10;
   int D = tempi / 10;
   int DU = (D << 4) | U;
   uint16_t valeur_Temp = (DU << 4) | tempd;
-  Send_Trame(CAPT_TEMP, valeur_Temp);
+  Send_Trame(CAPT_TEMP, valeur_Temp); 
 
-  // Captation cardiaque
-  int i = 0;
-  int log[9];
-  int somme = 0;
-  Serial.print('[');
-  do {
-    int readValue = analogRead(PORT_CARDIO);
-    int detectTime = millis();
-    if (readValue > valeurSeuil && readValue > valeurPrecedente){
-      if (detectTime > lastTime + 100) {
-        int avgBPM = 60 * 1000 / (detectTime - lastTime);
-        log[i] = avgBPM;
-        Serial.print('=');
-        somme = somme + avgBPM;
-
-        i++;
-      }
-      lastTime = detectTime;
-    }
-    valeurPrecedente = readValue;
-  } while (i<11);
-  Serial.print("] ");
-  uint16_t moyenne = round(somme / 10);
-
-  Serial.println(moyenne);
-    for (size_t i = 0; i < 11; i++)
-  {
-    Serial.print(log[i]);
-    Serial.print(' ');
-  }
-  Serial.println("");
-  Send_Trame(CAPT_CARDIO, moyenne);
 }
 
 void  Recep_Trame(void)
