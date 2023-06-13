@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "oled.h"
+#include "IsepScreen.h"
+
 void dec2bin(int n)
 {
     int c, k;
@@ -103,55 +106,55 @@ void read_dht11(uint8_t dht11_pin)
     }
   }
 
-  Serial.println("Humidity: ");
-  dec2bin(rawHumidity);
-  Serial.print("\t");
+  // Serial.println("Humidity: ");
+  // dec2bin(rawHumidity);
+  // Serial.print("\t");
   humi = rawHumidity >> 8;
-  dec2bin8(humi);
-  Serial.print("\t");
+  // dec2bin8(humi);
+  // Serial.print("\t");
   rawHumidity = rawHumidity << 8;
   humd = rawHumidity >> 8;
-  dec2bin8(humd);
-  Serial.print("\t");
-  Serial.print(humi);
-  Serial.print(".");
-  Serial.print(humd);
-  Serial.print("%");
-  Serial.println("");
+  // dec2bin8(humd);
+  // Serial.print("\t");
+  // Serial.print(humi);
+  // Serial.print(".");
+  // Serial.print(humd);
+  // Serial.print("%");
+  // Serial.println("");
 
-  Serial.println("Temperature Degree Celcius: ");
-  dec2bin(rawTemperature);
-  Serial.print("\t");
+  // Serial.println("Temperature Degree Celcius: ");
+  // dec2bin(rawTemperature);
+  // Serial.print("\t");
   tempi = rawTemperature >> 8;
-  dec2bin8(tempi);
-  Serial.print("\t");
+  // dec2bin8(tempi);
+  // Serial.print("\t");
   rawTemperature = rawTemperature << 8;
   tempd = rawTemperature >> 8;
   //tempd = (byte)rawTemperature;
-  dec2bin8(tempd);
-  Serial.print("\t");
-  Serial.print(tempi);
-  Serial.print(".");
-  Serial.print(tempd);
-  Serial.print("C");
-  Serial.println("");
+  // dec2bin8(tempd);
+  // Serial.print("\t");
+  // Serial.print(tempi);
+  // Serial.print(".");
+  // Serial.print(tempd);
+  // Serial.print("C");
+  // Serial.println("");
 
-  Serial.println("Checksum Byte: ");
-  dec2bin8(checkSum);
-  Serial.println("");
-  dec2bin8(tempi + tempd + humi + humd);
-  Serial.println("");
+  // Serial.println("Checksum Byte: ");
+  // dec2bin8(checkSum);
+  // Serial.println("");
+  // dec2bin8(tempi + tempd + humi + humd);
+  // Serial.println("");
   if ((byte)checkSum == (byte)(tempi + tempd + humi + humd))
   {
-    Serial.print("CHECKSUM_OK");
+    // Serial.print("CHECKSUM_OK");
   } 
   else 
   {
-    Serial.print("CHECKSUM_ERROR");
+    // Serial.print("CHECKSUM_ERROR");
   }
-  Serial.println("");
-  Serial.println("");
-  Serial.println("");
+  // Serial.println("");
+  // Serial.println("");
+  // Serial.println("");
 }
 
 //------------------------------------------------------------------------
@@ -201,14 +204,27 @@ void setup()
 // le champ "checksum" : ce champ est variable
 	//TrameEnvoi[17] = '0';
 	//TrameEnvoi[18] = '0';		// 19e et dernier octet de la trame
+
+// Init logo
+  InitI2C();
+  InitScreen();
+  Display(EmiScreenWhite);
+
 }
 
-void   Send_Trame(char typeCapt, uint16_t valeurCapt);
+void   Send_Trame(char typeCapt, uint16_t valeurCapt, char typeReq);
 void   Recep_Trame(void);
 void   Analyse_Trame(void);
 char   Conv_hexToAsc(int digit);
 
+// define request type
+#define		REQ_ECRITURE		0x31		/* requete en ecriture						*/
+#define		REQ_LECTURE			0x32  	/* requete en lecture						*/
+
+
 // define for C02 and tVOC not found on datasheet of gateway
+#define   CAPT_OLED     0x31  /* type de capteur d' OLED display   */
+
 #define		CAPT_TEMP			0x33	/* type de capteur de temperature			*/
 #define		CAPT_HUM			0x34  /* type de capteur d' humidité				*/
 #define		CAPT_SONMIC		0x37	/* type de capteur de son/microphone	*/
@@ -227,65 +243,89 @@ void loop()
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 {
+  // Send_Trame(CAPT_OLED, 0, REQ_LECTURE);
+  // delay(100);
+  Recep_Trame();
+  Analyse_Trame();
+  
   // Captation temperature
+  
   wait_for_dht11();
   start_signal(PORT_TEMP);
   read_dht11(PORT_TEMP);
+
   int U = tempi % 10;
   int D = tempi / 10;
   int DU = (D << 4) | U;
   uint16_t valeur_Temp = (DU << 4) | tempd;
-  Send_Trame(CAPT_TEMP, valeur_Temp);
+  Send_Trame(CAPT_TEMP, valeur_Temp, REQ_ECRITURE);
+  delay(100);
+  Recep_Trame();
+
+  // Captation humidite
+  int U_H = humi % 10;
+  int D_H = humi / 10;
+  int DU_H = (D_H << 4) | U_H;
+  uint16_t valeur_Humi = (DU_H << 4) | humd;
+  Send_Trame(CAPT_HUM, valeur_Humi, REQ_ECRITURE);
+  delay(100);
+  Recep_Trame();
+
+  delay(200);
+
+
 
   // Captation cardiaque
-  int i = 0;
-  int log[9];
-  int somme = 0;
-  Serial.print('[');
-  do {
-    int readValue = analogRead(PORT_CARDIO);
-    int detectTime = millis();
-    if (readValue > valeurSeuil && readValue > valeurPrecedente){
-      if (detectTime > lastTime + 100) {
-        int avgBPM = 60 * 1000 / (detectTime - lastTime);
-        log[i] = avgBPM;
-        Serial.print('=');
-        somme = somme + avgBPM;
+  // int i = 0;
+  // int log[9];
+  // int somme = 0;
+  // Serial.print('[');
+  // do {
+  //   int readValue = analogRead(PORT_CARDIO);
+  //   int detectTime = millis();
+  //   if (readValue > valeurSeuil && readValue > valeurPrecedente){
+  //     if (detectTime > lastTime + 100) {
+  //       int avgBPM = 60 * 1000 / (detectTime - lastTime);
+  //       log[i] = avgBPM;
+  //       Serial.print('=');
+  //       somme = somme + avgBPM;
 
-        i++;
-      }
-      lastTime = detectTime;
-    }
-    valeurPrecedente = readValue;
-  } while (i<11);
-  Serial.print("] ");
-  uint16_t moyenne = round(somme / 10);
+  //       i++;
+  //     }
+  //     lastTime = detectTime;
+  //   }
+  //   valeurPrecedente = readValue;
+  // } while (i<11);
+  // Serial.print("] ");
+  // uint16_t moyenne = round(somme / 10);
 
-  Serial.println(moyenne);
-    for (size_t i = 0; i < 11; i++)
-  {
-    Serial.print(log[i]);
-    Serial.print(' ');
-  }
-  Serial.println("");
-  Send_Trame(CAPT_CARDIO, moyenne);
+  // Serial.println(moyenne);
+  //   for (size_t i = 0; i < 11; i++)
+  // {
+  //   Serial.print(log[i]);
+  //   Serial.print(' ');
+  // }
+  // Serial.println("");
+  // Send_Trame(CAPT_CARDIO, moyenne);
+
 }
 
 void  Recep_Trame(void)
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 {
-	int nbrecu, len;	char digRecu;
-
-	Serial.print("Trame Reçue = ");
-	nbrecu = 0;
+	int nbrecu;
+  nbrecu = 0;
 	//
 	// TODO: ajouter ici le code pour recevoir les octets et les mettre dans TrameRecep[]
 	// repeter autant de fois que necessaire
-		// tester si un octet est dans le buffer de reception de Serial1 (BlueTooth)
-		// si oui, lire l'octet et le mettre dans TrameRecep
-	//
-	Serial.println();		// retour à la ligne sur la console
+  // tester si un octet est dans le buffer de reception de Serial1 (BlueTooth)
+  // si oui, lire l'octet et le mettre dans TrameRecep
+  while (Serial1.available()) {
+    TrameRecep[nbrecu] = Serial1.read();
+    nbrecu++;
+  }
+
 }
 
 void  Analyse_Trame(void)
@@ -295,7 +335,29 @@ void  Analyse_Trame(void)
 	Serial.println(">>>  Debut Analyse");
 	// Analyser la trame reçue dans le buffer TrameRecep[]
 	// Si c'est un "écho" de la trame envoyée, alors ne rien faire
-	// Si c'est un message venant du site web, alors decider de l'action à faire
+	if ( TrameRecep[0] == TrameEnvoi[0] 
+    && TrameRecep[1] == TrameEnvoi[1] 
+    && TrameRecep[2] == TrameEnvoi[2] 
+    && TrameRecep[3] == TrameEnvoi[3] 
+    && TrameRecep[4] == TrameEnvoi[4] 
+    && TrameRecep[5] == TrameEnvoi[5] 
+    && TrameRecep[6] == TrameEnvoi[6] 
+    && TrameRecep[7] == TrameEnvoi[7] 
+    && TrameRecep[8] == TrameEnvoi[8] 
+    && TrameRecep[9] == TrameEnvoi[9] 
+    && TrameRecep[10] == TrameEnvoi[10] 
+    && TrameRecep[11] == TrameEnvoi[11] 
+    && TrameRecep[12] == TrameEnvoi[12]
+  ) {
+    Serial.println("Trame recu == Trame envoi");
+  } else {
+      Serial.print("Trame recue : ");
+    for (size_t i = 0; i < 12; i++)
+    {
+      Serial.print(TrameRecep[i]);
+    }
+  }
+  Serial.println("");
 	Serial.println("<<<  Fin Analyse");
 	Serial.println();		// retour à la ligne sur la console
 }
@@ -317,11 +379,13 @@ char  Conv_hexToAsc(int digit)
 #define		SIZE_ENVOI	19
 #define		SIZE_RECEP	15
 
-void  Send_Trame(char typeCapt, uint16_t valeurCapt)
+void  Send_Trame(char typeCapt, uint16_t valeurCapt, char typeRequest)
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 {
 	int  digit, n;		char CheckSum, digAsc;
+
+  TrameEnvoi[5] = typeRequest;	// le champ "type" : type de requete
 
 	TrameEnvoi[6] = typeCapt;	// le champ "type" : type de capteur
 
