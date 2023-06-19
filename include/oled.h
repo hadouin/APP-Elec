@@ -444,3 +444,10 @@ void DisplayString(int x,int y,char *s)
         s++;
        }
 }
+
+void StringAlignedRight(int y, char *val)
+{
+  int len = strlen(val);
+  int x = 128 - len * 6;
+  DisplayString(x, y, val);
+}
